@@ -21,6 +21,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -47,8 +49,12 @@ func NewSpeedTestExporterCommand() *cobra.Command {
 			if err := opts.validate(); err != nil {
 				return err
 			}
-
 			cmd.SilenceUsage = true
+
+			if err := opts.complete(logger); err != nil {
+				return err
+			}
+
 			return opts.run(cmd.Context(), logger)
 		},
 	}
@@ -59,16 +65,60 @@ func NewSpeedTestExporterCommand() *cobra.Command {
 	return cmd
 }
 
+type speedtestMode string
+
+const (
+	modeGo  speedtestMode = "go"
+	modeCLI speedtestMode = "cli"
+)
+
 type options struct {
 	interval    time.Duration
 	bindAddress string
 	port        int
+	mode        speedtestMode
+
+	runner speedtest.TestRunner
+}
+
+type modeFlag struct {
+	setFunc func(speedtestMode)
+	value   speedtestMode
+}
+
+func (m *modeFlag) String() string {
+	return string(m.value)
+}
+
+func (m *modeFlag) Set(s string) error {
+	val := strings.ToLower(s)
+	switch val {
+	case string(modeGo):
+		m.setFunc(modeGo)
+	case string(modeCLI):
+		m.setFunc(modeCLI)
+	default:
+		return fmt.Errorf("must either be %q or %q", modeGo, modeCLI)
+	}
+	m.value = speedtestMode(s)
+	return nil
+}
+
+func (m *modeFlag) Type() string {
+	return "string"
 }
 
 func (o *options) addFlags(fs *pflag.FlagSet) {
-	fs.DurationVar(&o.interval, "interval", 1*time.Minute, "Interval in which to execute speedtests")
+	fs.DurationVar(&o.interval, "interval", 90*time.Second, "Interval in which to execute speedtests")
 	fs.StringVar(&o.bindAddress, "bind-address", "0.0.0.0", "Address for the metrics endpoint to listen on")
 	fs.IntVar(&o.port, "port", 8080, "Port for the metrics endpoint to listen on")
+
+	var modeValue modeFlag
+	modeValue.value = modeGo
+	modeValue.setFunc = func(m speedtestMode) {
+		o.mode = m
+	}
+	fs.Var(&modeValue, "mode", fmt.Sprintf("Speedtest mode, %q or %q (default %q)", modeGo, modeCLI, modeGo))
 }
 
 func (o *options) validate() error {
@@ -80,6 +130,22 @@ func (o *options) validate() error {
 	}
 	if o.port <= 0 {
 		return fmt.Errorf("port not set")
+	}
+	if o.mode == modeCLI {
+		if _, err := exec.LookPath("speedtest-cli"); err != nil {
+			return fmt.Errorf("speedtest-cli not installed, please head to https://github.com/sivel/speedtest-cli and download it")
+		}
+	}
+
+	return nil
+}
+
+func (o *options) complete(logger *log.Logger) error {
+	switch o.mode {
+	case modeGo:
+		o.runner = &speedtest.GoTestRunner{Logger: logger}
+	case modeCLI:
+		o.runner = &speedtest.CLITestRunner{Logger: logger}
 	}
 	return nil
 }
@@ -104,15 +170,15 @@ func (o *options) run(ctx context.Context, logger *log.Logger) error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if err := speedtest.Run(ctx, o.interval, logger); err != nil {
-			logger.Fatalf("error running speedtests: %v", err)
+		if err := speedtest.Run(ctx, o.interval, logger, o.runner); err != nil {
+			logger.Fatalf("error running speedtest: %v", err)
 		}
 	}()
 
 	<-ctx.Done()
 	logger.Println("shutdown signal received, shutting down")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Printf("error shutting down http server: %v", err)

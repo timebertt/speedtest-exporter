@@ -17,57 +17,47 @@ package speedtest
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
-
-	"github.com/showwin/speedtest-go/speedtest"
 
 	"github.com/timebertt/speedtest-exporter/pkg/metrics"
 )
 
-func Run(ctx context.Context, interval time.Duration, logger *log.Logger) error {
-	ticker := time.NewTicker(interval)
+func Run(ctx context.Context, interval time.Duration, logger *log.Logger, runner TestRunner) error {
+	// don't wait `interval`, start test right away
+	timer := time.NewTimer(time.Second)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
-			if err := runTest(logger); err != nil {
+		case <-timer.C:
+			timer.Reset(interval)
+
+			logger.Println("starting speedtest")
+			results, err := runner.Run(ctx)
+			if err != nil {
 				return err
 			}
+			logger.Printf("finished speedtest with results latency: %.0f, download: %.2f, upload: %.2f, duration: %.0f", results.latency, results.downloadSpeedMbps, results.uploadSpeedMbps, results.duration.Seconds())
+			results.Record()
 		}
 	}
 }
 
-func runTest(logger *log.Logger) error {
-	timeStart := time.Now()
+func (r *TestResults) Record() {
+	// counter metrics
+	metrics.TestsTotal.WithLabelValues(r.mode, r.serverName, r.serverSponsor).Inc()
 
-	user, _ := speedtest.FetchUserInfo()
+	// gauge metrics
+	metrics.TestDurationSeconds.WithLabelValues(r.mode).Set(r.duration.Seconds())
+	metrics.LatencyMilliseconds.WithLabelValues(r.mode).Set(r.latency)
+	metrics.DownloadSpeedMbps.WithLabelValues(r.mode).Set(r.downloadSpeedMbps)
+	metrics.UploadSpeedMbps.WithLabelValues(r.mode).Set(r.uploadSpeedMbps)
 
-	serverList, _ := speedtest.FetchServerList(user)
-	targets, _ := serverList.FindServer([]int{})
-	target := targets[0]
-
-	logger.Printf("starting speedtest against server %q (%s)", target.Name, target.Sponsor)
-	if err := target.PingTest(); err != nil {
-		return fmt.Errorf("error executing ping test: %w", err)
-	}
-	if err := target.DownloadTest(false); err != nil {
-		return fmt.Errorf("error executing download test: %w", err)
-	}
-	if err := target.UploadTest(false); err != nil {
-		return fmt.Errorf("error executing upload test: %w", err)
-	}
-
-	testDuration := time.Since(timeStart)
-	logger.Printf("finished speedtest with results latency: %s, download: %f, upload: %f, duration: %s", target.Latency, target.DLSpeed, target.ULSpeed, testDuration)
-	metrics.TestsTotal.WithLabelValues(target.Name, target.Sponsor).Inc()
-	metrics.TestDurationSecondsHistogram.WithLabelValues().Observe(testDuration.Seconds())
-	metrics.LatencyMillisecondsHistogram.WithLabelValues().Observe(float64(target.Latency.Milliseconds()))
-	metrics.DownloadSpeedMbpsHistogram.WithLabelValues().Observe(target.DLSpeed)
-	metrics.UploadSpeedMbpsHistogram.WithLabelValues().Observe(target.ULSpeed)
-
-	return nil
+	// histogram metrics
+	metrics.TestDurationSecondsHistogram.WithLabelValues(r.mode).Observe(r.duration.Seconds())
+	metrics.LatencyMillisecondsHistogram.WithLabelValues(r.mode).Observe(r.latency)
+	metrics.DownloadSpeedMbpsHistogram.WithLabelValues(r.mode).Observe(r.downloadSpeedMbps)
+	metrics.UploadSpeedMbpsHistogram.WithLabelValues(r.mode).Observe(r.uploadSpeedMbps)
 }

@@ -21,37 +21,57 @@ import (
 )
 
 const (
-	MetricsNamespace = "speedtest"
+	Namespace = "speedtest"
 )
 
 var (
 	TestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: MetricsNamespace,
+		Namespace: Namespace,
 		Name:      "tests_total",
 		Help:      "Total number of tests executed",
-	}, []string{"server", "sponsor"})
+	}, []string{"mode", "server", "sponsor"})
 	TestDurationSecondsHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: MetricsNamespace,
+		Namespace: Namespace,
+		Name:      "test_duration_seconds_histogram",
+		Help:      "Test durations observed (histogram)",
+		Buckets:   []float64{1, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150},
+	}, []string{"mode"})
+	TestDurationSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: Namespace,
 		Name:      "test_duration_seconds",
 		Help:      "Test durations observed",
-		Buckets:   []float64{1, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150},
-	}, []string{})
+	}, []string{"mode"})
 	LatencyMillisecondsHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: MetricsNamespace,
+		Namespace: Namespace,
+		Name:      "latency_milliseconds_histogram",
+		Help:      "Latency in milliseconds (histogram)",
+		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
+	}, []string{"mode"})
+	LatencyMilliseconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: Namespace,
 		Name:      "latency_milliseconds",
 		Help:      "Latency in milliseconds",
-		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
-	}, []string{})
+	}, []string{"mode"})
 	DownloadSpeedMbpsHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: MetricsNamespace,
+		Namespace: Namespace,
+		Name:      "download_speed_mbps_histogram",
+		Help:      "Download speed in Mb/s (histogram)",
+		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
+	}, []string{"mode"})
+	DownloadSpeedMbps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: Namespace,
 		Name:      "download_speed_mbps",
 		Help:      "Download speed in Mb/s",
-		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
-	}, []string{})
+	}, []string{"mode"})
 	UploadSpeedMbpsHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: MetricsNamespace,
+		Namespace: Namespace,
+		Name:      "upload_speed_mbps_histogram",
+		Help:      "Upload speed in Mb/s (histogram)",
+		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
+	}, []string{"mode"})
+	UploadSpeedMbps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: Namespace,
 		Name:      "upload_speed_mbps",
 		Help:      "Upload speed in Mb/s",
-		Buckets:   []float64{0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512},
-	}, []string{})
+	}, []string{"mode"})
 )
