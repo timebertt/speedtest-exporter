@@ -2,11 +2,9 @@ version: '3.8'
 
 services:
   speedtest-exporter:
-    image: docker.pkg.github.com/timebertt/speedtest-exporter/speedtest-exporter:dev
+    image: ghcr.io/timebertt/speedtest-exporter:dev
     build:
       context: .
-      args:
-      - DOCKER_BUILDKIT=1
       target: speedtest-exporter
     ports:
     - 8080:8080

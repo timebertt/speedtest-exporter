@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REPOSITORY := docker.pkg.github.com/timebertt/speedtest-exporter/speedtest-exporter
+REPOSITORY := ghcr.io/timebertt/speedtest-exporter
 TAG := dev
 
 test:
