@@ -22,7 +22,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/timebertt/speedtest-exporter/cmd/app"
+	"github.com/timebertt/speedtest-exporter/cmd"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 		}
 	}()
 
-	if err := app.NewSpeedTestExporterCommand().ExecuteContext(ctx); err != nil {
+	if err := cmd.NewSpeedTestExporterCommand().ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

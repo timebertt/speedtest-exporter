@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package app
+package cmd
 
 import (
 	"context"
@@ -83,11 +83,11 @@ type options struct {
 
 type modeFlag struct {
 	setFunc func(speedtestMode)
-	value   speedtestMode
+	value   *speedtestMode
 }
 
 func (m *modeFlag) String() string {
-	return string(m.value)
+	return string(*m.value)
 }
 
 func (m *modeFlag) Set(s string) error {
@@ -100,7 +100,7 @@ func (m *modeFlag) Set(s string) error {
 	default:
 		return fmt.Errorf("must either be %q or %q", modeGo, modeCLI)
 	}
-	m.value = speedtestMode(s)
+	*m.value = speedtestMode(s)
 	return nil
 }
 
@@ -114,7 +114,8 @@ func (o *options) addFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.port, "port", 8080, "Port for the metrics endpoint to listen on")
 
 	var modeValue modeFlag
-	modeValue.value = modeGo
+	o.mode = modeGo
+	modeValue.value = &o.mode
 	modeValue.setFunc = func(m speedtestMode) {
 		o.mode = m
 	}
@@ -146,6 +147,8 @@ func (o *options) complete(logger *log.Logger) error {
 		o.runner = &speedtest.GoTestRunner{Logger: logger}
 	case modeCLI:
 		o.runner = &speedtest.CLITestRunner{Logger: logger}
+	default:
+		return fmt.Errorf("invalid mode: %s", o.mode)
 	}
 	return nil
 }

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  speedtest-exporter:
+    image: docker.pkg.github.com/timebertt/speedtest-exporter/speedtest-exporter:dev
+    build:
+      context: .
+      args:
+      - DOCKER_BUILDKIT=1
+      target: speedtest-exporter
+    ports:
+    - 8080:8080
+
+  prometheus:
+    image: quay.io/prometheus/prometheus:v2.24.0
+    command:
+    - --config.file=/etc/config/prometheus.yml
+    volumes:
+    - ./dev/prometheus-config.yml:/etc/config/prometheus.yml
+    ports:
+    - 9090:9090
