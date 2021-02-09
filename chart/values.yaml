@@ -1,0 +1,67 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/timebertt/speedtest-exporter
+  tag: dev
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# port for metrics and health endpoints
+port: 8080
+
+# maximum interval for running speedtests
+interval: 1m30s
+
+# how to run speedtests: either use speedtest-go (`go`) or speedtest-cli (`cli`)
+mode: go
+
+prometheus:
+  # enable scraping of speedtest-exporter
+  enabled: true
+
+  servicemonitor:
+    # if true, deploy a ServiceMonitor CR for the prometheus-operator instead of
+    # annotating pods with prometheus.io/* annotations
+    enabled: false
+    prometheusInstance: default
+    interval: 60s
+    scrapeTimeout: 10s
+    labels: { }
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

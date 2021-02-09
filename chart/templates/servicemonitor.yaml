@@ -1,0 +1,25 @@
+{{- if and .Values.prometheus.enabled .Values.prometheus.servicemonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "speedtest-exporter.fullname" . }}
+  labels:
+    {{- include "speedtest-exporter.labels" . | nindent 4 }}
+    prometheus: {{ .Values.prometheus.servicemonitor.prometheusInstance }}
+  {{- if .Values.prometheus.servicemonitor.labels }}
+  {{- toYaml .Values.prometheus.servicemonitor.labels | nindent 4}}
+  {{- end }}
+spec:
+  jobLabel: {{ template "speedtest-exporter.fullname" . }}
+  selector:
+    matchLabels:
+  {{- include "speedtest-exporter.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  endpoints:
+  - targetPort: {{ .Values.port }}
+    path: "/metrics"
+    interval: {{ .Values.prometheus.servicemonitor.interval }}
+    scrapeTimeout: {{ .Values.prometheus.servicemonitor.scrapeTimeout }}
+  {{- end }}
