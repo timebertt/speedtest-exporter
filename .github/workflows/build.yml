@@ -3,9 +3,13 @@ name: Build
 on:
   push:
     branches: [ master ]
+    tags: [ v* ]
+
+env:
+  IMAGE_NAME: ghcr.io/timebertt/speedtest-exporter
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -13,7 +17,25 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
+    - name: Cache Go modules and build
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
+    - name: Test
+      run: make test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v2
     - name: Cache Docker layers
       uses: actions/cache@v2
       with:
@@ -32,15 +54,36 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GCHR_TOKEN }}
 
-    - name: Test
-      run: make test
-
     - name: Build and push Docker image
       uses: docker/build-push-action@v2.2.2
       with:
         context: .
-        tags: ghcr.io/timebertt/speedtest-exporter:dev-${{ github.sha }}
+        tags: ${{ env.IMAGE_NAME }}:dev-${{ github.sha }}
         target: speedtest-exporter
         push: true
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+    - name: Get tag name
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      id: vars
+      # Strip git ref prefix from version
+      run: echo ::set-output name=tag::$(echo ${GITHUB_REF:10})
+
+    - name: Build and push Docker release image
+      uses: docker/build-push-action@v2.2.2
+      with:
+        context: .
+        tags: ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
+        target: speedtest-exporter
+        push: true
+        cache-from: type=local,src=/tmp/.buildx-cache-new
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+    - name: Move cache
+      # Temp fix
+      # https://github.com/docker/build-push-action/issues/252
+      # https://github.com/moby/buildkit/issues/1896
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
