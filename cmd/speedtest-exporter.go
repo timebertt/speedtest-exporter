@@ -109,7 +109,7 @@ func (m *modeFlag) Type() string {
 }
 
 func (o *options) addFlags(fs *pflag.FlagSet) {
-	fs.DurationVar(&o.interval, "interval", 90*time.Second, "Interval in which to execute speedtests")
+	fs.DurationVar(&o.interval, "interval", 5*time.Minute, "Interval in which to execute speedtests")
 	fs.StringVar(&o.bindAddress, "bind-address", "0.0.0.0", "Address for the metrics endpoint to listen on")
 	fs.IntVar(&o.port, "port", 8080, "Port for the metrics endpoint to listen on")
 

@@ -13,7 +13,7 @@ fullnameOverride: ""
 port: 8080
 
 # maximum interval for running speedtests
-interval: 1m30s
+interval: 5m
 
 # how to run speedtests: either use speedtest-go (`go`) or speedtest-cli (`cli`)
 mode: go
