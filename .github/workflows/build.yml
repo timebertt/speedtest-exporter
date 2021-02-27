@@ -60,6 +60,7 @@ jobs:
         context: .
         tags: ${{ env.IMAGE_NAME }}:dev-${{ github.sha }}
         target: speedtest-exporter
+        platforms: linux/amd64,linux/arm64
         push: true
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
